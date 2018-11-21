@@ -16,6 +16,19 @@ height = 1080
 scanned = {}
 cam = None
 
+def encrypt(msg, key='STbHC6sDeLE1xoFfkIBzVA==:nr8EOH0'):
+    keyBytes = key.encode('utf-8')
+    cipher = Salsa20.new(key=keyBytes)
+    encrypted = cipher.nonce + cipher.encrypt(msg.encode('utf-8'))
+    return base64.b64encode(encrypted).decode('utf-8')
+
+def decrypt(msg, key='STbHC6sDeLE1xoFfkIBzVA==:nr8EOH0'):
+    keyBytes = key.encode('utf-8')
+    encrypted = base64.b64decode(msg.encode('utf-8'))
+    cipher = Salsa20.new(key=keyBytes, nonce=encrypted[:8])
+    decrypted = cipher.decrypt(encrypted[8:])
+    return decrypted.decode('utf-8')
+
 def detect_direction(points):
     diff = points[0] - points[-1]
     if abs(diff) < width/4:
@@ -26,6 +39,7 @@ def detect_direction(points):
         return 'right-to-left'
 
 def continous_scan():
+    i = 0
     while True:
         ret, frame = cam.read()
         barcodes = pyzbar.decode(frame)
@@ -46,6 +60,10 @@ def continous_scan():
                 }
             print(left)
         
+        if i % 10 == 0:
+            cv2.imshow('image',frame)
+        i += 1
+
         to_delete = []
         for code, item in scanned.items():
             if (datetime.now()-item['last']).seconds > 0.2:
@@ -60,23 +78,23 @@ def continous_scan():
                         "barcode" : item['code'],
                         "name" : ""
                     })
-                    secret = b'*Thirty-two byte (256 bits) key*'
-                    cipher = Salsa20.new(key=secret)
-                    msg = cipher.nonce + cipher.encrypt(update.encode('utf-8'))
-                    print(base64.b64encode(msg))
-                    print(cipher.nonce)
-                    urlopen('http://localhost:3000/api?request=%s' % json.dumps({
+                    msg = encrypt(update)
+                    print(msg)
+                    print(update)
+                    urlopen('http://localhost:3000/api?request=%s' % quote_plus(json.dumps({
                         "fridge_id" : "1",
-                        "method_name" : "add_update",
+                        "method" : "add_update",
                         "update" : msg
-                    }))
+                    })))
         for code in to_delete:
             del(scanned[code])
 
 if __name__ == "__main__":
     cam = cv2.VideoCapture(0)
-    cam.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+    cam.set(cv2.CAP_PROP_AUTOFOCUS, 0)
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
     cam.set(cv2.CAP_PROP_EXPOSURE, -6)
+    cam.set(28, 50)
+    cv2.namedWindow('image', cv2.WINDOW_NORMAL)
     continous_scan()
