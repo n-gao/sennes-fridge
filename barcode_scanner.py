@@ -240,21 +240,21 @@ def continous_scan():
 
         to_delete = []
         for code, item in scanned.items():
-            if (datetime.now()-item['last']).seconds > 0.2:
+            if (datetime.now()-item['last']).seconds > 0.5:
                 to_delete.append(code)
                 print("delete")
                 print(detect_direction(item['lefts']))
                 direction = detect_direction(item['lefts'])
                 if direction != None:
                     update = json.dumps({
-                        "method": int(direction == 'left-to-right'),
-                        "method_name": 0 if direction == 'left-to-right' else 1,
+                        "method": int(direction != 'left-to-right'),
+                        "method_name": "add" if direction == 'left-to-right' else "remove",
                         "barcode": item['code'],
                         "name": ""
                     })
                     msg = encrypt(update)
                     result = urlopen('http://sennes.n-gao.de/api?request=%s' % quote_plus(json.dumps({
-                        "fridge_id": "2",
+                        "fridge_id": "4",
                         "method": "add_update",
                         "update": msg
                     })))
@@ -269,10 +269,12 @@ kernel = np.array([[0,-1,0], [-1,5,-1], [0,-1,0]])
 
 if __name__ == "__main__":
     cam = cv2.VideoCapture(0)
-    # cam.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+    cam.set(cv2.CAP_PROP_AUTOFOCUS, 0)
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
     # cam.set(cv2.CAP_PROP_EXPOSURE, -6)
-    # cam.set(28, 50)
+    cam.set(28, 50)
     # cv2.namedWindow('image', cv2.WINDOW_NORMAL)
+    width = cam.get(cv2.CAP_PROP_FRAME_WIDTH)
+    height = cam.get(cv2.CAP_PROP_FRAME_HEIGHT)
     continous_scan()
